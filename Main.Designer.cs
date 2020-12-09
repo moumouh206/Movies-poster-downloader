@@ -103,6 +103,7 @@ namespace Movies_poster_downloader
             this.StartDownloadBtn.TabIndex = 2;
             this.StartDownloadBtn.Text = "Start downloading";
             this.StartDownloadBtn.UseVisualStyleBackColor = true;
+            this.StartDownloadBtn.Click += new System.EventHandler(this.StartDownloadBtn_Click);
             // 
             // openFolderBtn
             // 

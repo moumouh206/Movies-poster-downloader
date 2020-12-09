@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="TheMovieDb" Version="2.0.0" />
+    <PackageReference Include="TMDbLib" Version="1.7.3-alpha" />
   </ItemGroup>
 
   <ItemGroup>
