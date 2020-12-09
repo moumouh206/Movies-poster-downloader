@@ -89,7 +89,15 @@ namespace Movies_poster_downloader
                 MessageBox.Show($"Got {results.Results.Count:N0} of {results.TotalResults:N0} results");
                 foreach (SearchMovie result in results.Results)
                 {
-                    MessageBox.Show(result.Title);
+                    //MessageBox.Show(result.PosterPath);
+                    if(result.PosterPath != string.Empty)
+                    {
+                        uri = "https://image.tmdb.org/t/p/w500" + result.PosterPath;
+                        byte[] bytes = webClient.DownloadData(uri);
+                        MemoryStream ms = new MemoryStream(bytes);
+                        Image artWork = Image.FromStream(ms);
+                        artWork.Save(result.Id.ToString() + ".jpg");
+                    }
                     //Console.WriteLine(result.PosterPath);
                     //movie = client.GetMovie(MovieMethods.Images );
                     //DateTime value = Convert.ToDateTime(movie.ReleaseDate);
@@ -99,9 +107,7 @@ namespace Movies_poster_downloader
                     //if (year == value.Year.ToString())
                     //    break;
                 }
-                //byte[] bytes = webClient.DownloadData(uri);
-                //MemoryStream ms = new MemoryStream(bytes);
-                //Image artWork = Image.FromStream(ms);
+                
             }
             else
             {
