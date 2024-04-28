@@ -2,16 +2,28 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net5.0-windows</TargetFramework>
+    <TargetFramework>net6.0-windows</TargetFramework>
     <RootNamespace>Movies_poster_downloader</RootNamespace>
     <UseWindowsForms>true</UseWindowsForms>
     <StartupObject>Movies_poster_downloader.Program</StartupObject>
     <ApplicationIcon>filmstrip-download.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Company>MBA2DNA</Company>
+    <Authors>BIDA mohamed Amine</Authors>
+    <PackageId>Movies_Poster_Downloader</PackageId>
+    <Product>Movies Poster Downloader v1</Product>
+    <Copyright>BIDA mohamed Amine</Copyright>
+    <PackageIcon>filmstrip-download.ico</PackageIcon>
+    <RepositoryUrl>https://github.com/moumouh206/Movies-poster-downloader</RepositoryUrl>
+    <RepositoryType>Public</RepositoryType>
+    <PackageTags>Movies,Poster,Downloader</PackageTags>
+    <PackageReleaseNotes>init</PackageReleaseNotes>
+    <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="TMDbLib" Version="1.7.3-alpha" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2-beta1" />
+    <PackageReference Include="TMDbLib" Version="1.9.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,6 +39,13 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="filmstrip-download.ico">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

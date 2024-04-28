@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Policy;
 using System.Windows.Forms;
 using TMDbLib.Client;
 using TMDbLib.Objects.General;
+using TMDbLib.Objects.Movies;
 using TMDbLib.Objects.Search;
 
 namespace Movies_poster_downloader
@@ -36,6 +37,7 @@ namespace Movies_poster_downloader
                     listView1.Items.Clear();
                     string[] fls = Directory.GetDirectories(fbd.SelectedPath);
                     label1.Text = "Folders found: " + fls.Length.ToString();
+                    progressBar1.Value = 0;
                     progressBar1.Maximum = fls.Length;
                     total = fls.Length;
                     foreach (var f in fls)
@@ -58,6 +60,10 @@ namespace Movies_poster_downloader
                         {
                             dirName = dir.Name.Substring(0, dir.Name.IndexOf("720p"));
                         }
+                        if (dirName.Contains("20"))
+                        {
+                            dirName = dir.Name.Substring(0, dir.Name.IndexOf("20"));
+                        }
                         if (dirName.Contains("Season"))
                         {
                             dirName = dir.Name.Substring(0, dir.Name.IndexOf("Season"));
@@ -68,7 +74,7 @@ namespace Movies_poster_downloader
                         }
                         dirName = dirName.Replace(".", " ").Replace("-", " ").Replace("_", " ");
 
-                        string[] row = { dirName, string.Empty, f };
+                        string[] row = { dirName, string.Empty,"" ,f };
                         var listViewItem = new ListViewItem(row);
                         listView1.Items.Add(listViewItem);
                         progressBar1.Value++;
@@ -88,11 +94,11 @@ namespace Movies_poster_downloader
                 {
                     for (int i = 0; i < listView1.Items.Count; i++)
                     {
-                        string dir = listView1.Items[i].SubItems[2].Text;
+                        string dir = listView1.Items[i].SubItems[3].Text;
                         progressBar1.Value += 1;
-                        if (!File.Exists(dir + @"\poster.ico"))
+                        if (!File.Exists(dir + @"\poster.ico") || !File.Exists(dir + @"\desktop.ini"))
                         {
-                            
+
                             try
                             {
                                 bool found = false;
@@ -106,8 +112,10 @@ namespace Movies_poster_downloader
                                 {
                                     if (result.PosterPath != string.Empty)
                                     {
+                                        
                                         listView1.Items[i].SubItems[1].Text = "Downloading ...";
                                         uri = "https://image.tmdb.org/t/p/w500" + result.PosterPath;
+                                        
                                         //Clipboard.SetText(uri);
                                         try
                                         {
@@ -116,15 +124,31 @@ namespace Movies_poster_downloader
                                             Image artWork = Image.FromStream(ms);
                                             artWork.Save(dir + "\\" + result.Id.ToString() + ".jpg");
                                             //artWork.Save(dir + "\\poster.ico", System.Drawing.Imaging.ImageFormat.Icon);
+                                            
+                                            
+                                            
+                                        
+                                        if (!File.Exists(dir + @"\poster.ico"))
+                                        {
                                             ImagingHelper.ConvertToIcon(dir + "\\" + result.Id.ToString() + ".jpg", dir + "\\poster.ico", 256, false);
+                                            File.SetAttributes(dir + @"\poster.ico", File.GetAttributes(dir + @"\poster.ico") | FileAttributes.Hidden | FileAttributes.ReadOnly);
+                                            File.SetAttributes(dir, File.GetAttributes(dir) | FileAttributes.ReadOnly);
+                                        }
+                                        if (!File.Exists(dir + @"\desktop.ini"))
+                                        {
                                             string[] lines = { "[.ShellClassInfo]", "IconResource=poster.ico,0" };
                                             File.WriteAllLines(dir + @"\desktop.ini", lines);
                                             File.SetAttributes(dir + @"\desktop.ini", File.GetAttributes(dir + @"\desktop.ini") | FileAttributes.Hidden | FileAttributes.ReadOnly);
-                                            File.SetAttributes(dir + @"\poster.ico", File.GetAttributes(dir + @"\poster.ico") | FileAttributes.Hidden | FileAttributes.ReadOnly);
-                                            File.SetAttributes(dir, File.GetAttributes(dir) | FileAttributes.ReadOnly);
-                                            SHChangeNotify(0x08000000, 0x0000, (IntPtr)null, (IntPtr)null);
+                                        }
+
+                                        SHChangeNotify(0x08000000, 0x0000, (IntPtr)null, (IntPtr)null);
                                             listView1.Items[i].SubItems[1].Text = "Done";
                                             found = true;
+                                            Movie movie = client.GetMovieAsync(result.Id).Result;
+
+                                            listView1.Items[i].SubItems[2].Text = movie.Genres[0].Name;
+                                            listView1.Items[i].SubItems[3].Text = movie.VoteAverage.ToString();
+
                                             listView1.Refresh();
                                             break;
                                         }
@@ -136,7 +160,7 @@ namespace Movies_poster_downloader
                                         }
                                     }
                                 }
-                                if (!found && !File.Exists(listView1.Items[i].SubItems[2].Text + @"\poster.ico"))
+                                if (!found && !File.Exists(listView1.Items[i].SubItems[3].Text + @"\poster.ico"))
                                 {
                                     listView1.Items[i].SubItems[1].Text = "Not found.";
                                     listView1.Refresh();
@@ -152,8 +176,94 @@ namespace Movies_poster_downloader
                             listView1.Items[i].SubItems[1].Text = "Icon already exist";
                             listView1.Items[i].SubItems[1].ForeColor = Color.LightGray;
                         }
-                    }
 
+                    }
+                    MessageBox.Show("Cover downloading is completed", "Operation completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+
+                    MessageBox.Show(ex.Message);
+                }
+
+
+            }
+            else
+            {
+                MessageBox.Show("No title found in the list , please search for movies before clicking this button", "No movies found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+        }
+
+
+
+        private void aboutbtn_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
+        {
+            About a = new About();
+            a.ShowDialog();
+        }
+
+        private void Main_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void gameFolderIconChangeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+           
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void GameCoverBtn_Click(object sender, EventArgs e)
+        {
+            if (total > 0)
+            {
+                progressBar1.Value = 0;
+                try
+                {
+                    for (int i = 0; i < listView1.Items.Count; i++)
+                    {
+                        string dir = listView1.Items[i].SubItems[3].Text;
+                        
+                        progressBar1.Value += 1;
+                        if (File.Exists(dir + @"\cover.ico") && !File.Exists(dir + @"\desktop.ini"))
+                        {
+
+                            try
+                            {
+                                if (File.Exists(dir + @"\cover.ico"))
+                                {
+                                    File.SetAttributes(dir + @"\cover.ico", File.GetAttributes(dir + @"\cover.ico") | FileAttributes.Hidden | FileAttributes.ReadOnly);
+                                    File.SetAttributes(dir, File.GetAttributes(dir) | FileAttributes.ReadOnly);
+                                }
+                                if (!File.Exists(dir + @"\desktop.ini"))
+                                {
+                                    string[] lines = { "[.ShellClassInfo]", "IconResource=cover.ico,0" };
+                                    File.WriteAllLines(dir + @"\desktop.ini", lines);
+                                    File.SetAttributes(dir + @"\desktop.ini", File.GetAttributes(dir + @"\desktop.ini") | FileAttributes.Hidden | FileAttributes.ReadOnly);
+                                }
+                                SHChangeNotify(0x08000000, 0x0000, (IntPtr)null, (IntPtr)null);
+                                listView1.Items[i].SubItems[1].Text = "Done";
+                                listView1.Refresh();
+                                //break;
+                            }
+                            catch (Exception ex)
+                            {
+                                listView1.Items[i].SubItems[1].Text = ex.Message;
+                            }
+                        }
+                        else
+                        {
+                            listView1.Items[i].SubItems[1].Text = "Icon already exist";
+                            listView1.Items[i].SubItems[1].ForeColor = Color.LightGray;
+                        }
+
+                    }
+                    MessageBox.Show("Cover downloading is completed", "Operation completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {
