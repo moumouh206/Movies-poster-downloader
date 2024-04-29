@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Policy;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using TMDbLib.Client;
 using TMDbLib.Objects.General;
@@ -22,6 +23,7 @@ namespace Movies_poster_downloader
         public Main()
         {
             InitializeComponent();
+            Main.CheckForIllegalCrossThreadCalls = false;
         }
 
         private void openFolderBtn_Click(object sender, EventArgs e)
@@ -85,11 +87,12 @@ namespace Movies_poster_downloader
             }
         }
 
-        private void StartDownloadBtn_Click(object sender, EventArgs e)
+        private async void StartDownloadBtn_Click(object sender, EventArgs e)
         {
             if (total > 0)
             {
                 progressBar1.Value = 0;
+                bool anyIconDownloaded = false; // Flag to track if any icon was downloaded successfully
                 try
                 {
                     for (int i = 0; i < listView1.Items.Count; i++)
@@ -98,104 +101,143 @@ namespace Movies_poster_downloader
                         progressBar1.Value += 1;
                         if (!File.Exists(dir + @"\poster.ico") || !File.Exists(dir + @"\desktop.ini"))
                         {
-
-                            try
+                            await Task.Run(async () =>
                             {
-                                bool found = false;
-                                TMDbClient client = new TMDbClient("3107e4ce8b2ea681bbd58cb0208968ea");
-                                WebClient webClient = new WebClient();
-                                SearchContainer<SearchMovie> results = client.SearchMovieAsync(listView1.Items[i].SubItems[0].Text).Result;
-                                listView1.Items[i].SubItems[1].Text = "Searching ...";
-                                listView1.Refresh();
-                                string uri = string.Empty;
-                                foreach (SearchMovie result in results.Results)
+                                try
                                 {
-                                    if (result.PosterPath != string.Empty)
+                                    bool found = false;
+                                    TMDbClient client = new TMDbClient("3107e4ce8b2ea681bbd58cb0208968ea");
+                                    WebClient webClient = new WebClient();
+                                    SearchContainer<SearchMovie> results = await client.SearchMovieAsync(listView1.Items[i].SubItems[0].Text);
+
+                                    // Invoke UI updates on the UI thread
+                                    listView1.Invoke((MethodInvoker)delegate
                                     {
-                                        
-                                        listView1.Items[i].SubItems[1].Text = "Downloading ...";
-                                        uri = "https://image.tmdb.org/t/p/w500" + result.PosterPath;
-                                        
-                                        //Clipboard.SetText(uri);
-                                        try
-                                        {
-                                            byte[] bytes = webClient.DownloadData(uri);
-                                            MemoryStream ms = new MemoryStream(bytes);
-                                            Image artWork = Image.FromStream(ms);
-                                            artWork.Save(dir + "\\" + result.Id.ToString() + ".jpg");
-                                            //artWork.Save(dir + "\\poster.ico", System.Drawing.Imaging.ImageFormat.Icon);
-                                            
-                                            
-                                            
-                                        
-                                        if (!File.Exists(dir + @"\poster.ico"))
-                                        {
-                                            ImagingHelper.ConvertToIcon(dir + "\\" + result.Id.ToString() + ".jpg", dir + "\\poster.ico", 256, false);
-                                            File.SetAttributes(dir + @"\poster.ico", File.GetAttributes(dir + @"\poster.ico") | FileAttributes.Hidden | FileAttributes.ReadOnly);
-                                            File.SetAttributes(dir, File.GetAttributes(dir) | FileAttributes.ReadOnly);
-                                        }
-                                        if (!File.Exists(dir + @"\desktop.ini"))
-                                        {
-                                            string[] lines = { "[.ShellClassInfo]", "IconResource=poster.ico,0" };
-                                            File.WriteAllLines(dir + @"\desktop.ini", lines);
-                                            File.SetAttributes(dir + @"\desktop.ini", File.GetAttributes(dir + @"\desktop.ini") | FileAttributes.Hidden | FileAttributes.ReadOnly);
-                                        }
+                                        listView1.Items[i].SubItems[1].Text = "Searching ...";
+                                    });
 
-                                        SHChangeNotify(0x08000000, 0x0000, (IntPtr)null, (IntPtr)null);
-                                            listView1.Items[i].SubItems[1].Text = "Done";
-                                            found = true;
-                                            Movie movie = client.GetMovieAsync(result.Id).Result;
-
-                                            listView1.Items[i].SubItems[2].Text = movie.Genres[0].Name;
-                                            listView1.Items[i].SubItems[3].Text = movie.VoteAverage.ToString();
-
-                                            listView1.Refresh();
-                                            break;
-                                        }
-                                        catch (Exception ex)
+                                    string uri = string.Empty;
+                                    foreach (SearchMovie result in results.Results)
+                                    {
+                                        if (result.PosterPath != string.Empty)
                                         {
-                                            listView1.Items[i].SubItems[1].Text = ex.Message;
-                                            // MessageBox.Show(ex.Message);
-                                            // break;
+                                            // Invoke UI updates on the UI thread
+                                            listView1.Invoke((MethodInvoker)delegate
+                                            {
+                                                listView1.Items[i].SubItems[1].Text = "Downloading ...";
+                                            });
+
+                                            uri = "https://image.tmdb.org/t/p/w500" + result.PosterPath;
+                                            try
+                                            {
+                                                byte[] bytes = await webClient.DownloadDataTaskAsync(uri);
+                                                MemoryStream ms = new MemoryStream(bytes);
+                                                Image artWork = Image.FromStream(ms);
+                                                artWork.Save(dir + "\\" + result.Id.ToString() + ".jpg");
+                                                if (!File.Exists(dir + @"\poster.ico"))
+                                                {
+                                                    ImagingHelper.ConvertToIcon(dir + "\\" + result.Id.ToString() + ".jpg", dir + "\\poster.ico", 256, false);
+                                                    File.SetAttributes(dir + @"\poster.ico", File.GetAttributes(dir + @"\poster.ico") | FileAttributes.Hidden | FileAttributes.ReadOnly);
+                                                    File.SetAttributes(dir, File.GetAttributes(dir) | FileAttributes.ReadOnly);
+                                                    anyIconDownloaded = true; // Set the flag to true if an icon was downloaded
+                                                }
+                                                if (!File.Exists(dir + @"\desktop.ini"))
+                                                {
+                                                    string[] lines = { "[.ShellClassInfo]", "IconResource=poster.ico,0" };
+                                                    File.WriteAllLines(dir + @"\desktop.ini", lines);
+                                                    File.SetAttributes(dir + @"\desktop.ini", File.GetAttributes(dir + @"\desktop.ini") | FileAttributes.Hidden | FileAttributes.ReadOnly);
+                                                }
+                                                // Invoke UI updates on the UI thread
+                                                listView1.Invoke((MethodInvoker)delegate
+                                                {
+                                                    listView1.Items[i].SubItems[1].Text = "Done";
+                                                    found = true;
+                                                    Movie movie = client.GetMovieAsync(result.Id).Result;
+                                                    listView1.Items[i].SubItems[2].Text = movie.Genres[0].Name;
+                                                    listView1.Items[i].SubItems[3].Text = movie.VoteAverage.ToString();
+                                                });
+                                                break;
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                // Invoke UI updates on the UI thread
+                                                listView1.Invoke((MethodInvoker)delegate
+                                                {
+                                                    listView1.Items[i].SubItems[1].Text = ex.Message;
+                                                });
+                                            }
                                         }
                                     }
+                                    if (!found && !File.Exists(listView1.Items[i].SubItems[3].Text + @"\poster.ico"))
+                                    {
+                                        // Invoke UI updates on the UI thread
+                                        listView1.Invoke((MethodInvoker)delegate
+                                        {
+                                            listView1.Items[i].SubItems[1].Text = "Not found.";
+                                        });
+                                    }
                                 }
-                                if (!found && !File.Exists(listView1.Items[i].SubItems[3].Text + @"\poster.ico"))
+                                catch (Exception ex)
                                 {
-                                    listView1.Items[i].SubItems[1].Text = "Not found.";
-                                    listView1.Refresh();
+                                    // Invoke UI updates on the UI thread
+                                    listView1.Invoke((MethodInvoker)delegate
+                                    {
+                                        MessageBox.Show(ex.Message);
+                                    });
                                 }
-                            }
-                            catch (Exception ex)
-                            {
-                                MessageBox.Show(ex.Message);
-                            }
+                            });
                         }
                         else
                         {
-                            listView1.Items[i].SubItems[1].Text = "Icon already exist";
-                            listView1.Items[i].SubItems[1].ForeColor = Color.LightGray;
+                            // Invoke UI updates on the UI thread
+                            listView1.Invoke((MethodInvoker)delegate
+                            {
+                                listView1.Items[i].SubItems[1].Text = "Icon already exist";
+                                listView1.Items[i].SubItems[1].ForeColor = Color.LightGray;
+                            });
                         }
-
                     }
+
+                    // Refresh icons if any icon was downloaded successfully
+                    if (anyIconDownloaded)
+                    {
+                        // Loop through the list and refresh icons
+                        for (int i = 0; i < listView1.Items.Count; i++)
+                        {
+                            string dir = listView1.Items[i].SubItems[3].Text;
+                            if (File.Exists(dir + @"\poster.ico") && File.Exists(dir + @"\desktop.ini"))
+                            {
+                                File.SetAttributes(dir + @"\poster.ico", File.GetAttributes(dir + @"\poster.ico") | FileAttributes.Hidden | FileAttributes.ReadOnly);
+                                File.SetAttributes(dir, File.GetAttributes(dir) | FileAttributes.ReadOnly);
+                            }
+                            if (!File.Exists(dir + @"\desktop.ini"))
+                            {
+                                string[] lines = { "[.ShellClassInfo]", "IconResource=poster.ico,0" };
+                                File.WriteAllLines(dir + @"\desktop.ini", lines);
+                                File.SetAttributes(dir + @"\desktop.ini", File.GetAttributes(dir + @"\desktop.ini") | FileAttributes.Hidden | FileAttributes.ReadOnly);
+                            }
+                        }
+                    }
+
+                    // Notify shell of changes after all downloads are complete
+                    Invoke((MethodInvoker)delegate
+                    {
+                        SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
+                    });
+
                     MessageBox.Show("Cover downloading is completed", "Operation completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {
-
                     MessageBox.Show(ex.Message);
                 }
-
-
             }
             else
             {
-                MessageBox.Show("No title found in the list , please search for movies before clicking this button", "No movies found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("No title found in the list, please search for movies before clicking this button", "No movies found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
         }
-
-
 
         private void aboutbtn_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
         {

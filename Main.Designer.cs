@@ -189,9 +189,10 @@ namespace Movies_poster_downloader
             this.Controls.Add(this.StartDownloadBtn);
             this.Controls.Add(this.listView1);
             this.Controls.Add(this.aboutbtn);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.aboutbtn;
+            this.MaximizeBox = false;
             this.Name = "Main";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Movies poster downloader";
